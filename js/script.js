@@ -25,9 +25,14 @@ $(function() {//same as document.addEventListener("DOMContentLoaded") ......
   var dc = {};
 
   var homeHtml = "snippets/home-snippet.html";
+
   var allCategoriesUrl = "http://davids-restaurant.herokuapp.com/categories.json";
   var categoriesTitleHtml = "snippets/categories-title-snippet.html";
   var categoryHtml = "snippets/category-snippet.html";
+
+  var menuItemsUrl = "http://davids-restaurant.herokuapp.com/menu_items.json?category=";
+  var menuItmesTitleHtml = "snippets/menu-items-title.html";
+  var menuItemHtml = "snippets/menu-item.html";
 
   // Convenience function for inserting innerHTML for 'select'
   var insertHtml = function(selector, html) {
@@ -68,8 +73,19 @@ $(function() {//same as document.addEventListener("DOMContentLoaded") ......
     showLoading("#main-content");
     $ajaxUtils.sendGetRequest(
       allCategoriesUrl,
-      buildAndShowCategoriesHtml);
+      buildAndShowCategoriesHtml
+    );
   };
+
+  // Load the menu items view ('categoryShort'is a short name for a category)
+  dc.loadMenuItems = function(categoryShort) {
+    showLoading("#main-content");
+    $ajaxUtils.sendGetRequest(
+      menuItemsUrl + categoryShort,
+      buildAndShowMenuItemsHtml
+    );
+  };
+
 
   // Builds HTML for the categories page based on the data from the server
   function buildAndShowCategoriesHtml(categories) {
@@ -115,6 +131,125 @@ $(function() {//same as document.addEventListener("DOMContentLoaded") ......
     finalHtml += "</section>";
     return finalHtml;
   }
+
+  // builds HTML for the single category page
+  // based on the data coming from the server
+  function buildAndShowMenuItemsHtml(categoryMenuItems) {
+    // Load title snippet of menu items page
+    $ajaxUtils.sendGetRequest(
+      menuItmesTitleHtml,
+      function(menuItmesTitleHtml) {
+        // retrieve single menu item snippet
+        $ajaxUtils.sendGetRequest(
+          menuItemHtml,
+          function(menuItemHtml) {
+            var menuItemsViewHtml =
+                buildMenuItemsViewHtml(categoryMenuItems,
+                                       menuItmesTitleHtml,
+                                       menuItemHtml);
+            insertHtml("#main-content", menuItemsViewHtml);
+          },
+          false);
+      },
+      false);
+  }
+
+  // Using category and menu items data & snippets html,
+  // build menu items view HTML to be inserted into page
+  function buildMenuItemsViewHtml(categoryMenuItems,
+                                  menuItmesTitleHtml,
+                                  menuItemHtml) {
+
+   menuItmesTitleHtml = insertProperty(menuItmesTitleHtml,
+                                      "name",
+                                       categoryMenuItems.category.name);
+   menuItmesTitleHtml = insertProperty(menuItmesTitleHtml,
+                                      "special_instructions",
+                                       categoryMenuItems.category.special_instructions);
+
+  var finalHtml = menuItmesTitleHtml;
+  finalHtml += "<section class='row'>";
+
+  // Loop over menu items and add to the 'finalHtml' string
+  var menuItems = categoryMenuItems.menu_items;
+  var catShortName = categoryMenuItems.category.short_name;
+  for (var i = 0; i < menuItems.length; i++) {
+    // Insert menu item values
+    var html = menuItemHtml;
+    html = insertProperty(html,
+                          "short_name",
+                          menuItems[i].short_name);
+
+    html = insertProperty(html,
+                          "catShortName",
+                          catShortName);
+
+    html = insertItemPrice(html,
+                         "price_small",
+                          menuItems[i].price_small);
+
+    html = insertItemPortionName(html,
+                         "small_portion_name",
+                          menuItems[i].small_portion_name);
+
+    html = insertItemPrice(html,
+                         "price_large",
+                          menuItems[i].price_large);
+
+    html = insertItemPortionName(html,
+                         "large_portion_name",
+                          menuItems[i].large_portion_name);
+
+    html = insertProperty(html,
+                          "name",
+                          menuItems[i].name);
+
+    html = insertProperty(html,
+                          "description",
+                          menuItems[i].description);
+
+    // Add clearfix after every secodne menu item
+    if (i % 2 != 0) {
+      html +=
+        "<div class='cleafix visible-lg-block visible-md-block'></div>"
+    }
+
+    finalHtml += html;
+  }
+
+  return finalHtml;
+}
+
+// Appends price with '$' is price exists
+function insertItemPrice(html,
+                         pricePropName,
+                         priceValue) {
+  // if not specified, replace with empty string
+  if (!priceValue) {
+    return insertProperty(html, pricePropName, "");
+  }
+
+   priceValue = "$" + priceValue.toFixed(2);
+   html = insertProperty(html, pricePropName, priceValue)
+
+   return html;
+}
+
+// Appends portion name (in parens) id it exists
+function insertItemPortionName(html,
+                         portionPropName,
+                         portionValue) {
+  // if not specified, return original string
+  if (!portionValue) {
+    return insertProperty(html, portionPropName, "");
+  }
+
+   portionValue = "(" + portionValue + ")";
+   html = insertProperty(html, portionPropName, portionValue)
+
+   return html;
+}
+
 
   global.$dc = dc;
 
